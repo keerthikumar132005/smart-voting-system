@@ -1,4 +1,5 @@
-// Cohere API configuration
-export const API_KEY = "sk-811622fa6a7a4501b192d1a6be20e3c2";
-export const API_URL = "https://api.cohere.ai/v1/chat";
-export const MODEL = "command";
+// Gemini API configuration
+export const API_KEY = "AIzaSyDK5BMYoaBsO8uHf_UgbNI9W_SFGY88cfE"; // Replace with your actual API key
+export const API_URL =
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+export const MODEL = "gemini-2.0-flash";

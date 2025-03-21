@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect } from 'react';
-import ReactMarkdown from 'react-markdown';
-import { MessageSquare, Send, Loader2 } from 'lucide-react';
-import { API_KEY, API_URL, MODEL } from '../config/gemini';
+import { useState, useRef, useEffect } from "react";
+import ReactMarkdown from "react-markdown";
+import { MessageSquare, Send, Loader2 } from "lucide-react";
+import { API_KEY, API_URL, MODEL } from "../config/gemini";
 
 // Political context for the AI
 const POLITICAL_CONTEXT = `
@@ -23,13 +23,13 @@ Important: Keep responses focused on democratic processes and avoid any controve
 `;
 
 interface Message {
-  role: 'user' | 'bot';
+  role: "user" | "bot";
   content: string;
 }
 
 const ChatBot = () => {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
@@ -37,16 +37,18 @@ const ChatBot = () => {
   useEffect(() => {
     setMessages([
       {
-        role: 'bot',
-        content: 'Welcome! I\'m your political advisor for the Smart Voting System. I can help you understand:\n\n- Voting procedures\n- Political party information\n- Electoral processes\n- Voter rights and responsibilities\n\nWhat would you like to know about?'
-      }
+        role: "bot",
+        content:
+          "Welcome! I'm your political advisor for the Smart Voting System. I can help you understand:\n\n- Voting procedures\n- Political party information\n- Electoral processes\n- Voter rights and responsibilities\n\nWhat would you like to know about?",
+      },
     ]);
   }, []);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      chatContainerRef.current.scrollTop =
+        chatContainerRef.current.scrollHeight;
     }
   }, [messages]);
 
@@ -55,70 +57,84 @@ const ChatBot = () => {
     if (!input.trim() || isLoading) return;
 
     const userMessage = input.trim();
-    setInput('');
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setInput("");
+    setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
     setIsLoading(true);
 
     try {
       // Format conversation history for the API
-      const messageHistory = messages.map(msg => ({
-        role: msg.role === 'user' ? 'user' : 'assistant',
-        content: msg.content
+      const messageHistory = messages.map((msg) => ({
+        role: msg.role === "user" ? "user" : "model", // Gemini uses 'model' instead of 'assistant'
+        parts: [{ text: msg.content }],
       }));
 
       // Add system message with political context
       const apiMessages = [
-        { role: 'system', content: POLITICAL_CONTEXT },
+        { role: "user", parts: [{ text: POLITICAL_CONTEXT }] },
         ...messageHistory,
-        { role: 'user', content: userMessage }
+        { role: "user", parts: [{ text: userMessage }] },
       ];
 
       // Call API
-      const response = await fetch(API_URL, {
-        method: 'POST',
+      const response = await fetch(`${API_URL}?key=${API_KEY}`, {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${API_KEY}`
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: MODEL,
-          messages: apiMessages,
-          temperature: 0.7,
-          max_tokens: 1000,
-          stream: false
-        })
+          contents: apiMessages,
+        }),
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error?.message || `API error: ${response.status}`);
+        throw new Error(
+          errorData.error?.message || `API error: ${response.status}`
+        );
       }
 
       const data = await response.json();
-      const botMessage = data.choices[0].message.content;
+      const botMessage = data.candidates[0].content.parts[0].text;
 
-      setMessages(prev => [...prev, { role: 'bot', content: botMessage }]);
+      setMessages((prev) => [...prev, { role: "bot", content: botMessage }]);
     } catch (error) {
-      console.error('Error getting AI response:', error);
-      
-      let errorMessage = 'I apologize, but I encountered an error connecting to the AI service. Please try again in a moment.';
+      console.error("Error getting AI response:", error);
+
+      let errorMessage =
+        "I apologize, but I encountered an error connecting to the AI service. Please try again in a moment.";
       if (error instanceof Error) {
         const errorMsg = error.message.toLowerCase();
-        if (errorMsg.includes('api key not valid') || errorMsg.includes('unauthorized')) {
-          errorMessage = 'I apologize, but there seems to be an issue with the API configuration. Please contact support.';
-        } else if (errorMsg.includes('quota') || errorMsg.includes('rate limit')) {
-          errorMessage = 'I apologize, but we\'ve reached our API quota limit. Please try again later.';
-        } else if (errorMsg.includes('not found') || errorMsg.includes('404')) {
-          errorMessage = 'I apologize, but the AI service is temporarily unavailable. Please try again in a few moments.';
-        } else if (errorMsg.includes('blocked') || errorMsg.includes('safety')) {
-          errorMessage = 'I apologize, but I cannot provide information on that topic. Please ask about voting procedures, electoral processes, or general political information.';
+        if (
+          errorMsg.includes("api key not valid") ||
+          errorMsg.includes("unauthorized")
+        ) {
+          errorMessage =
+            "I apologize, but there seems to be an issue with the API configuration. Please contact support.";
+        } else if (
+          errorMsg.includes("quota") ||
+          errorMsg.includes("rate limit")
+        ) {
+          errorMessage =
+            "I apologize, but we've reached our API quota limit. Please try again later.";
+        } else if (errorMsg.includes("not found") || errorMsg.includes("404")) {
+          errorMessage =
+            "I apologize, but the AI service is temporarily unavailable. Please try again in a few moments.";
+        } else if (
+          errorMsg.includes("blocked") ||
+          errorMsg.includes("safety")
+        ) {
+          errorMessage =
+            "I apologize, but I cannot provide information on that topic. Please ask about voting procedures, electoral processes, or general political information.";
         }
       }
-      
-      setMessages(prev => [...prev, {
-        role: 'bot',
-        content: errorMessage
-      }]);
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "bot",
+          content: errorMessage,
+        },
+      ]);
     } finally {
       setIsLoading(false);
     }
@@ -129,7 +145,9 @@ const ChatBot = () => {
       <div className="flex items-center justify-between px-4 py-3 border-b">
         <div className="flex items-center space-x-2">
           <MessageSquare className="h-5 w-5 text-orange-500" />
-          <h2 className="text-lg font-semibold text-gray-800">Political Advisor</h2>
+          <h2 className="text-lg font-semibold text-gray-800">
+            Political Advisor
+          </h2>
         </div>
       </div>
 
@@ -140,13 +158,15 @@ const ChatBot = () => {
         {messages.map((message, index) => (
           <div
             key={index}
-            className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            className={`flex ${
+              message.role === "user" ? "justify-end" : "justify-start"
+            }`}
           >
             <div
               className={`max-w-[80%] rounded-lg p-3 ${
-                message.role === 'user'
-                  ? 'bg-orange-500 text-white'
-                  : 'bg-gray-100 text-gray-800'
+                message.role === "user"
+                  ? "bg-orange-500 text-white"
+                  : "bg-gray-100 text-gray-800"
               }`}
             >
               <div className="prose prose-sm max-w-none">
